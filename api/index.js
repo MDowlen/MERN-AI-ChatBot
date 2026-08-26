@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { hasMongoConfig } from '../server/db.js';
+import { connectDb, hasMongoConfig } from '../server/db.js';
 import {
   addMessage,
   createConversation,
@@ -16,11 +16,25 @@ app.disable('x-powered-by');
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
-app.get('/api/health', (_req, res) => {
-  res.json({
-    status: 'ok',
+app.get('/api/health', async (_req, res) => {
+  let database = 'demo-memory';
+
+  if (hasMongoConfig()) {
+    try {
+      await connectDb();
+      database = 'mongodb-connected';
+    } catch (error) {
+      console.error('MongoDB health check failed:', error.message);
+      database = 'mongodb-error';
+    }
+  }
+
+  const healthy = database !== 'mongodb-error';
+
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
     stack: ['MongoDB', 'Express', 'React', 'Node.js'],
-    database: hasMongoConfig() ? 'mongodb-configured' : 'demo-memory',
+    database,
     assistant: process.env.OPENAI_API_KEY ? 'openai' : 'demo'
   });
 });
