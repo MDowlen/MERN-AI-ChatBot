@@ -1,16 +1,18 @@
 # Nexa — MERN AI ChatBot
 
-A portfolio-ready full-stack conversation workspace built with **MongoDB, Express, React, and Node.js**.
+Nexa is a live, full-stack conversation workspace built with **MongoDB, Express, React, and Node.js**, with production AI responses powered through the OpenAI Responses API.
 
-## What this project demonstrates
+**Live app:** https://mern-ai-chat-bot-one.vercel.app
 
-- React 19 conversation UI with responsive desktop/mobile layouts
-- Express 5 REST API running on Node.js
-- MongoDB persistence through Mongoose when `MONGODB_URI` is configured
-- Graceful demo-memory fallback so the public portfolio deployment remains testable without exposing database credentials
-- Optional OpenAI Responses API integration via `OPENAI_API_KEY`
-- Vercel-compatible single-project deployment for both frontend and API
-- Optimistic UI updates, health status, conversation creation, deletion, history search, and error handling
+## Production status
+
+- React 19 + Vite frontend
+- Express 5 REST API on Node.js
+- MongoDB Atlas persistence through Mongoose
+- OpenAI Responses API integration
+- Vercel production deployment
+- Conversation creation, deletion, history search, optimistic updates, and error handling
+- Responsive desktop/mobile interface
 
 ## Architecture
 
@@ -22,9 +24,22 @@ React + Vite
    │
 Express 5 / Node.js
    │
-   ├── Mongoose → MongoDB Atlas (when configured)
-   └── OpenAI Responses API (optional)
+   ├── Mongoose → MongoDB Atlas
+   └── OpenAI Responses API
 ```
+
+## Why I built it
+
+This project demonstrates the full path from UI to API to persistent data to model response in one deployable application. The goal was to show practical full-stack engineering rather than a static AI mockup.
+
+## Key engineering decisions
+
+- A single Vercel project serves both the Vite frontend and Express API.
+- MongoDB Atlas stores conversation history so data survives redeploys and serverless restarts.
+- Mongoose keeps the conversation schema and persistence layer explicit.
+- The frontend uses optimistic updates so messages appear immediately while the server request completes.
+- The backend keeps API keys and database credentials server-side in environment variables.
+- A deterministic demo fallback remains available for local development when provider credentials are omitted.
 
 ## Local setup
 
@@ -38,11 +53,11 @@ The React app runs on `http://localhost:5173` and proxies `/api` to the local Ex
 
 ## Environment variables
 
-| Variable | Required | Purpose |
+| Variable | Required for production | Purpose |
 | --- | --- | --- |
-| `MONGODB_URI` | No | Enables MongoDB persistence; without it the app uses demo-memory mode |
-| `OPENAI_API_KEY` | No | Enables live model responses; without it the app uses a deterministic demo assistant |
-| `OPENAI_MODEL` | No | Defaults to `gpt-5.4-mini` |
+| `MONGODB_URI` | Yes | MongoDB Atlas persistence |
+| `OPENAI_API_KEY` | Yes | Live AI responses |
+| `OPENAI_MODEL` | No | Optional model override |
 | `PORT` | No | Local API port; defaults to `3001` |
 
 ## Verification
@@ -52,13 +67,20 @@ npm run build
 npm run check
 ```
 
-The smoke test starts the Express app on an ephemeral port, checks `/api/health`, creates a conversation, posts a message, and confirms the assistant response flow.
+The smoke test checks `/api/health`, creates a conversation, sends a message, and validates the assistant response flow. Production QA also verifies the live conversation endpoint and Vercel runtime logs.
 
-## Deployment
+## API surface
 
-This repository includes `vercel.json` so Vercel can build the Vite frontend and route `/api/*` requests to the Express function.
+- `GET /api/health`
+- `GET /api/conversations`
+- `POST /api/conversations`
+- `GET /api/conversations/:id`
+- `DELETE /api/conversations/:id`
+- `POST /api/conversations/:id/messages`
 
-For full persistence, add `MONGODB_URI` in the Vercel project environment settings. For live AI responses, add `OPENAI_API_KEY` as a server-side environment variable.
+## Repository
+
+Source: https://github.com/MDowlen/MERN-AI-ChatBot
 
 ## License
 
