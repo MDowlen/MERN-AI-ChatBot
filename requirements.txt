@@ -1,0 +1,2 @@
+fastapi>=0.117,<1
+forge-incident @ git+https://github.com/MDowlen/MDowlen-forge-incident.git@323fe72256c25ec57d69a200f8faa41865f04a2d
