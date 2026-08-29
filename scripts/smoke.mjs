@@ -28,6 +28,16 @@ try {
     throw new Error('PR facts endpoint must expose its authority boundary');
   }
 
+  const deploymentResponse = await fetch(`${base}/api/engineering/deployments`);
+  const deploymentOverview = await deploymentResponse.json();
+  if (!deploymentResponse.ok) throw new Error('deployment evidence endpoint failed');
+  if (!Array.isArray(deploymentOverview.items)) {
+    throw new Error('deployment evidence endpoint must return an items array');
+  }
+  if (!deploymentOverview.boundary?.evidence || !deploymentOverview.sampling?.productionQueriedSeparately) {
+    throw new Error('deployment endpoint must expose evidence and sampling boundaries');
+  }
+
   const created = await fetch(`${base}/api/conversations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -51,6 +61,12 @@ try {
     },
     prFacts: {
       count: prOverview.count,
+      contractValid: true
+    },
+    deployments: {
+      recent: deploymentOverview.count,
+      production: deploymentOverview.latest?.production?.shortSha || null,
+      preview: deploymentOverview.latest?.preview?.shortSha || null,
       contractValid: true
     },
     messages: reply.conversation.messages.length,
