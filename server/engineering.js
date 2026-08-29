@@ -1,32 +1,8 @@
 const PORTFOLIO_REPOS = [
-  {
-    id: 'nexa',
-    name: 'Nexa',
-    repo: 'MDowlen/MERN-AI-ChatBot',
-    role: 'AI engineering command center',
-    capability: 'product'
-  },
-  {
-    id: 'context',
-    name: 'ForgeContext',
-    repo: 'MDowlen/forge-context',
-    role: 'grounded repository intelligence',
-    capability: 'context'
-  },
-  {
-    id: 'pr',
-    name: 'ForgePR',
-    repo: 'MDowlen/forge-pr',
-    role: 'pull-request risk and CI review',
-    capability: 'pr-review'
-  },
-  {
-    id: 'incident',
-    name: 'ForgeIncident',
-    repo: 'MDowlen/MDowlen-forge-incident',
-    role: 'incident triage and evidence-backed RCA',
-    capability: 'incident-rca'
-  }
+  { id: 'nexa', name: 'Nexa', repo: 'MDowlen/MERN-AI-ChatBot', role: 'AI engineering command center', capability: 'product' },
+  { id: 'context', name: 'ForgeContext', repo: 'MDowlen/forge-context', role: 'grounded repository intelligence', capability: 'context' },
+  { id: 'pr', name: 'ForgePR', repo: 'MDowlen/forge-pr', role: 'pull-request risk and CI review', capability: 'pr-review' },
+  { id: 'incident', name: 'ForgeIncident', repo: 'MDowlen/MDowlen-forge-incident', role: 'incident triage and evidence-backed RCA', capability: 'incident-rca' }
 ];
 
 function githubHeaders() {
@@ -35,9 +11,7 @@ function githubHeaders() {
     'X-GitHub-Api-Version': '2022-11-28',
     'User-Agent': 'nexa-command-center'
   };
-  if (process.env.GITHUB_TOKEN) {
-    headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  }
+  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
   return headers;
 }
 
@@ -73,21 +47,15 @@ async function repositorySnapshot(definition) {
       language: repo.language,
       updatedAt: repo.pushed_at,
       openIssues: repo.open_issues_count,
-      latestCommit: latest
-        ? {
-            sha: latest.sha.slice(0, 7),
-            message: latest.commit?.message?.split('\n')[0] || 'Commit',
-            committedAt: latest.commit?.committer?.date || null
-          }
-        : null,
+      latestCommit: latest ? {
+        sha: latest.sha.slice(0, 7),
+        message: latest.commit?.message?.split('\n')[0] || 'Commit',
+        committedAt: latest.commit?.committer?.date || null
+      } : null,
       status: 'available'
     };
   } catch (error) {
-    return {
-      ...definition,
-      status: 'unavailable',
-      error: error.message
-    };
+    return { ...definition, status: 'unavailable', error: error.message };
   }
 }
 
@@ -130,7 +98,6 @@ function deterministicRiskFacts(pr, combinedStatus) {
 export async function getPullRequestOverview(repoName = 'MDowlen/MERN-AI-ChatBot') {
   const definition = allowedRepo(repoName);
   const pulls = await githubJson(`/repos/${definition.repo}/pulls?state=open&sort=updated&direction=desc&per_page=10`);
-
   const items = await Promise.all(pulls.map(async (pull) => {
     const [detail, combinedStatus] = await Promise.all([
       githubJson(`/repos/${definition.repo}/pulls/${pull.number}`),
@@ -157,7 +124,6 @@ export async function getPullRequestOverview(repoName = 'MDowlen/MERN-AI-ChatBot
       url: detail.html_url
     };
   }));
-
   return {
     generatedAt: new Date().toISOString(),
     repository: definition,
@@ -174,7 +140,6 @@ export async function getPullRequestOverview(repoName = 'MDowlen/MERN-AI-ChatBot
 export async function getEngineeringOverview() {
   const repositories = await Promise.all(PORTFOLIO_REPOS.map(repositorySnapshot));
   const available = repositories.filter((item) => item.status === 'available').length;
-
   return {
     generatedAt: new Date().toISOString(),
     mode: process.env.GITHUB_TOKEN ? 'authenticated-github' : 'public-github',
@@ -190,7 +155,7 @@ export async function getEngineeringOverview() {
       { id: 'repositories', label: 'Repositories', status: 'live' },
       { id: 'pr-risk', label: 'PR Risk', status: 'live' },
       { id: 'deployments', label: 'Deployments', status: 'live' },
-      { id: 'incidents', label: 'Incidents', status: 'next-splinter' },
+      { id: 'incidents', label: 'Incidents', status: 'live' },
       { id: 'conversations', label: 'Conversations', status: 'live' },
       { id: 'health', label: 'System Health', status: 'live' }
     ]
