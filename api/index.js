@@ -10,6 +10,7 @@ import {
 } from '../server/store.js';
 import { generateAssistantReply } from '../server/assistant.js';
 import { getEngineeringOverview, getPullRequestOverview } from '../server/engineering.js';
+import { getDeploymentOverview } from '../server/deployments.js';
 
 const app = express();
 
@@ -57,6 +58,14 @@ app.get('/api/engineering/prs', async (req, res, next) => {
     if (error.message.includes('allowlist')) {
       return res.status(400).json({ error: error.message });
     }
+    next(error);
+  }
+});
+
+app.get('/api/engineering/deployments', async (_req, res, next) => {
+  try {
+    res.json(await getDeploymentOverview());
+  } catch (error) {
     next(error);
   }
 });
