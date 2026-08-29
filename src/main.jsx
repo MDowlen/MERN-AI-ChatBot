@@ -48,9 +48,14 @@ function SurfaceBadge({ status }) {
   return <span className={`surface-badge ${live ? 'is-live' : ''}`}>{live ? 'Live' : 'Next splinter'}</span>;
 }
 
+function RiskBadge({ band }) {
+  return <span className={`risk-badge risk-${band || 'unknown'}`}>{band || 'unknown'} risk</span>;
+}
+
 function App() {
   const [view, setView] = useState('overview');
   const [overview, setOverview] = useState(null);
+  const [prOverview, setPrOverview] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [health, setHealth] = useState(null);
@@ -69,13 +74,15 @@ function App() {
   async function load() {
     setError('');
     try {
-      const [healthData, engineering, list] = await Promise.all([
+      const [healthData, engineering, prs, list] = await Promise.all([
         api('/api/health'),
         api('/api/engineering/overview'),
+        api('/api/engineering/prs'),
         api('/api/conversations')
       ]);
       setHealth(healthData);
       setOverview(engineering);
+      setPrOverview(prs);
       if (list.length) {
         setConversations(list);
         setActiveId((current) => current || list[0].id);
@@ -136,22 +143,29 @@ function App() {
       <div className="metric-grid">
         <MetricCard label="Portfolio systems" value={summary?.repositories ?? '—'} detail="Nexa + Forge ecosystem" />
         <MetricCard label="Reachable repos" value={summary?.available ?? '—'} detail={overview?.mode === 'authenticated-github' ? 'Authenticated GitHub API' : 'Public GitHub API'} />
-        <MetricCard label="Specialists" value={summary?.specialistSystems ?? '—'} detail="Context · PR · Incident" />
+        <MetricCard label="Open Nexa PRs" value={prOverview?.count ?? '—'} detail="Live GitHub pull requests" />
         <MetricCard label="Runtime" value={health?.status || '—'} detail={health?.database || 'Checking dependencies'} />
       </div>
       <section className="command-section"><div className="section-title"><div><span>Connected architecture</span><h3>Nexa orchestrates; specialists stay specialized.</h3></div></div>
         <div className="architecture-flow"><div className="arch-node primary">Nexa<span>Product surface + orchestration</span></div><div className="arch-arrow">→</div><div className="arch-column"><div className="arch-node">ForgeContext<span>Grounded repository intelligence</span></div><div className="arch-row"><div className="arch-node">ForgePR<span>Change-risk specialist</span></div><div className="arch-node">ForgeIncident<span>Failure/RCA specialist</span></div></div></div></div>
       </section>
-      <section className="command-section"><div className="section-title"><div><span>Build status</span><h3>Command Center surfaces</h3></div></div><div className="surface-grid">{overview?.surfaces?.map((surface) => <button key={surface.id} className="surface-card" onClick={() => setView(surface.id)}><div><strong>{surface.label}</strong><small>{surface.status === 'live' ? 'Available in this splinter' : 'Wired in the next implementation splinter'}</small></div><SurfaceBadge status={surface.status} /></button>)}</div></section>
+      <section className="command-section"><div className="section-title"><div><span>Build status</span><h3>Command Center surfaces</h3></div></div><div className="surface-grid">{overview?.surfaces?.map((surface) => <button key={surface.id} className="surface-card" onClick={() => setView(surface.id)}><div><strong>{surface.label}</strong><small>{surface.status === 'live' ? 'Available now' : 'Wired in the next implementation splinter'}</small></div><SurfaceBadge status={surface.status} /></button>)}</div></section>
     </div>;
   }
 
   function RepositoriesView() {
-    return <div className="workspace-content"><div className="page-heading"><div><span className="eyebrow">READ-ONLY GITHUB DATA</span><h2>Repositories</h2><p>The first integration surface. Nexa reads the portfolio systems without mutating them.</p></div></div><div className="repo-grid">{overview?.repositories?.map((repo) => <article className="repo-card" key={repo.id}><div className="repo-card-head"><div><span className="repo-role">{repo.role}</span><h3>{repo.name}</h3></div><span className={`repo-status ${repo.status}`}>{repo.status}</span></div><code>{repo.repo}</code><div className="repo-meta"><span>Branch <b>{repo.defaultBranch || '—'}</b></span><span>Language <b>{repo.language || 'Mixed'}</b></span><span>Issues <b>{repo.openIssues ?? '—'}</b></span></div>{repo.latestCommit && <div className="commit-box"><span>{repo.latestCommit.sha}</span><strong>{repo.latestCommit.message}</strong><small>{repo.latestCommit.committedAt ? new Date(repo.latestCommit.committedAt).toLocaleString() : ''}</small></div>}{repo.error && <p className="inline-error">{repo.error}</p>}</article>)}</div></div>;
+    return <div className="workspace-content"><div className="page-heading"><div><span className="eyebrow">READ-ONLY GITHUB DATA</span><h2>Repositories</h2><p>Nexa reads the portfolio systems without mutating them.</p></div></div><div className="repo-grid">{overview?.repositories?.map((repo) => <article className="repo-card" key={repo.id}><div className="repo-card-head"><div><span className="repo-role">{repo.role}</span><h3>{repo.name}</h3></div><span className={`repo-status ${repo.status}`}>{repo.status}</span></div><code>{repo.repo}</code><div className="repo-meta"><span>Branch <b>{repo.defaultBranch || '—'}</b></span><span>Language <b>{repo.language || 'Mixed'}</b></span><span>Issues <b>{repo.openIssues ?? '—'}</b></span></div>{repo.latestCommit && <div className="commit-box"><span>{repo.latestCommit.sha}</span><strong>{repo.latestCommit.message}</strong><small>{repo.latestCommit.committedAt ? new Date(repo.latestCommit.committedAt).toLocaleString() : ''}</small></div>}{repo.error && <p className="inline-error">{repo.error}</p>}</article>)}</div></div>;
+  }
+
+  function PRRiskView() {
+    return <div className="workspace-content"><div className="page-heading"><div><span className="eyebrow">SPLINTER 2 · PR EVIDENCE</span><h2>PR Risk</h2><p>Nexa owns discovery and deterministic facts. ForgePR remains the specialist for grounded semantic review and generated-test workflows.</p></div><button className="refresh-button" onClick={load}>↻ Refresh</button></div>
+      <div className="boundary-note"><strong>Authority boundary</strong><span>{prOverview?.boundary?.facts}</span><span>{prOverview?.boundary?.specialist}</span></div>
+      {!prOverview?.items?.length ? <div className="future-panel"><SparkMark /><h3>No open pull requests found.</h3><p>Create or open a PR in the selected repository and refresh this surface.</p></div> : <div className="pr-list">{prOverview.items.map((pr) => <article className="pr-card" key={pr.number}><div className="pr-head"><div><span className="repo-role">PR #{pr.number} · {pr.draft ? 'draft' : 'open'}</span><h3>{pr.title}</h3><p>{pr.head} → {pr.base}</p></div><RiskBadge band={pr.deterministicRisk?.band} /></div><div className="pr-metrics"><span>Files <b>{pr.changedFiles}</b></span><span>Additions <b>+{pr.additions}</b></span><span>Deletions <b>-{pr.deletions}</b></span><span>Commits <b>{pr.commits}</b></span><span>CI status <b>{pr.combinedStatus}</b></span></div><div className="fact-list"><strong>Deterministic facts</strong>{pr.deterministicRisk?.facts?.length ? pr.deterministicRisk.facts.map((fact) => <div className={`fact-row fact-${fact.severity}`} key={fact.code}><span>{fact.code}</span><p>{fact.detail}</p></div>) : <div className="fact-row fact-info"><span>no-risk-threshold</span><p>No size/churn/CI threshold was triggered.</p></div>}</div><div className="specialist-callout"><span>ForgePR layer</span><p>Semantic quality/safety findings, repository-grounded citations, test generation, and deterministic specialist gating remain separate from these raw facts.</p></div><a className="pr-link" href={pr.url} target="_blank" rel="noreferrer">Open on GitHub ↗</a></article>)}</div>}
+    </div>;
   }
 
   function PlaceholderView({ title, eyebrow, description, learns }) {
-    return <div className="workspace-content narrow"><div className="page-heading"><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2><p>{description}</p></div></div><div className="future-panel"><SparkMark /><h3>This surface is intentionally scaffolded before integration.</h3><p>Splinter 1 creates the stable UI boundary first. The next splinter adds the data/tool implementation behind it without rewriting the shell.</p><div className="learning-box"><strong>What this teaches</strong><p>{learns}</p></div></div></div>;
+    return <div className="workspace-content narrow"><div className="page-heading"><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2><p>{description}</p></div></div><div className="future-panel"><SparkMark /><h3>This surface is intentionally scaffolded before integration.</h3><p>The stable UI boundary already exists. A later splinter adds the data/tool implementation without rewriting the shell.</p><div className="learning-box"><strong>What this teaches</strong><p>{learns}</p></div></div></div>;
   }
 
   function HealthView() {
@@ -159,7 +173,8 @@ function App() {
       ['Application', health?.status === 'ok', health?.status],
       ['MongoDB', health?.database === 'mongodb-connected', health?.database],
       ['AI provider configured', health?.assistant === 'openai', health?.assistant],
-      ['Engineering overview', Boolean(overview), overview ? overview.mode : 'loading']
+      ['Engineering overview', Boolean(overview), overview ? overview.mode : 'loading'],
+      ['PR facts surface', Boolean(prOverview), prOverview ? `${prOverview.count} open PR(s)` : 'loading']
     ];
     return <div className="workspace-content narrow"><div className="page-heading"><div><span className="eyebrow">DEPENDENCY TRUTH</span><h2>System Health</h2><p>Health means verifying dependencies instead of merely checking that environment variables exist.</p></div></div><div className="health-list">{rows.map(([label, ok, detail]) => <div className="health-row" key={label}><StatusDot active={ok} /><div><strong>{label}</strong><span>{detail || 'unknown'}</span></div></div>)}</div></div>;
   }
@@ -172,13 +187,13 @@ function App() {
   let content;
   if (view === 'overview') content = <OverviewView />;
   else if (view === 'repositories') content = <RepositoriesView />;
+  else if (view === 'pr-risk') content = <PRRiskView />;
   else if (view === 'conversations') content = <ConversationsView />;
   else if (view === 'health') content = <HealthView />;
-  else if (view === 'pr-risk') content = <PlaceholderView eyebrow="FORGEPR INTEGRATION" title="PR Risk" description="Review pull requests with grounded repository evidence, deterministic checks, and specialist findings." learns="Stable product boundaries first; specialist integration second. This keeps UI concerns separate from review-engine concerns." />;
   else if (view === 'deployments') content = <PlaceholderView eyebrow="RELEASE INTELLIGENCE" title="Deployments" description="Compare healthy and current releases, connect commits to deployments, and surface runtime evidence." learns="Observability joins source control and deployment state. A deployment is an immutable release artifact, not just a URL." />;
   else content = <PlaceholderView eyebrow="FORGEINCIDENT INTEGRATION" title="Incidents" description="Correlate logs, metrics, deployments, repository context, and prior postmortems into evidence-backed RCA." learns="Correlation creates hypotheses; evidence earns confidence; production-changing remediation requires explicit authority." />;
 
-  return <div className="app-shell command-shell"><aside className="sidebar command-sidebar"><div className="brand-row"><SparkMark /><div><strong>Nexa</strong><span>Engineering Command Center</span></div></div><button className="new-chat" onClick={newConversation}>+ Ask Nexa</button><div className="nav-label">Workspace</div><nav className="command-nav">{navItems.map(([id, label, icon]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}><span>{icon}</span>{label}{overview?.surfaces?.find((s) => s.id === id)?.status === 'next-splinter' && <i />}</button>)}</nav><div className="stack-card"><div className="stack-title">Current splinter</div><strong>Command Center shell</strong><span>Read-only engineering overview + preserved conversation workspace.</span></div></aside><main className="main-panel command-main"><header className="topbar"><div><h1>{titleMap[view]}</h1><p>feature/nexa-command-center · Splinter 1</p></div><div className="health-pill"><StatusDot active={health?.status === 'ok'} /><span>{health?.status === 'ok' ? 'System healthy' : 'Checking system'}</span></div></header>{error && view !== 'conversations' && <div className="global-error">{error}</div>}{content}</main></div>;
+  return <div className="app-shell command-shell"><aside className="sidebar command-sidebar"><div className="brand-row"><SparkMark /><div><strong>Nexa</strong><span>Engineering Command Center</span></div></div><button className="new-chat" onClick={newConversation}>+ Ask Nexa</button><div className="nav-label">Workspace</div><nav className="command-nav">{navItems.map(([id, label, icon]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}><span>{icon}</span>{label}{overview?.surfaces?.find((s) => s.id === id)?.status === 'next-splinter' && <i />}</button>)}</nav><div className="stack-card"><div className="stack-title">Current splinter</div><strong>PR evidence + risk facts</strong><span>Live GitHub PR discovery with deterministic size/churn/CI signals.</span></div></aside><main className="main-panel command-main"><header className="topbar"><div><h1>{titleMap[view]}</h1><p>feature/nexa-command-center · Splinter 2</p></div><div className="health-pill"><StatusDot active={health?.status === 'ok'} /><span>{health?.status === 'ok' ? 'System healthy' : 'Checking system'}</span></div></header>{error && view !== 'conversations' && <div className="global-error">{error}</div>}{content}</main></div>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
