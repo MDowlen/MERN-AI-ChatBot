@@ -20,6 +20,14 @@ try {
     throw new Error('engineering repository list failed');
   }
 
+  const prResponse = await fetch(`${base}/api/engineering/prs`);
+  const prOverview = await prResponse.json();
+  if (!prResponse.ok) throw new Error('PR facts endpoint failed');
+  if (!Array.isArray(prOverview.items)) throw new Error('PR facts endpoint must return an items array');
+  if (!prOverview.boundary?.facts || !prOverview.boundary?.specialist) {
+    throw new Error('PR facts endpoint must expose its authority boundary');
+  }
+
   const created = await fetch(`${base}/api/conversations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -40,6 +48,10 @@ try {
       mode: engineering.mode,
       repositories: engineering.summary.repositories,
       available: engineering.summary.available
+    },
+    prFacts: {
+      count: prOverview.count,
+      contractValid: true
     },
     messages: reply.conversation.messages.length,
     provider: reply.provider
