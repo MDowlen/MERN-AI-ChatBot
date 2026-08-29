@@ -9,6 +9,7 @@ import {
   listConversations
 } from '../server/store.js';
 import { generateAssistantReply } from '../server/assistant.js';
+import { getEngineeringOverview } from '../server/engineering.js';
 
 const app = express();
 
@@ -35,8 +36,17 @@ app.get('/api/health', async (_req, res) => {
     status: healthy ? 'ok' : 'degraded',
     stack: ['MongoDB', 'Express', 'React', 'Node.js'],
     database,
-    assistant: process.env.OPENAI_API_KEY ? 'openai' : 'demo'
+    assistant: process.env.OPENAI_API_KEY ? 'openai' : 'demo',
+    commandCenter: 'feature/nexa-command-center'
   });
+});
+
+app.get('/api/engineering/overview', async (_req, res, next) => {
+  try {
+    res.json(await getEngineeringOverview());
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get('/api/conversations', async (_req, res, next) => {
