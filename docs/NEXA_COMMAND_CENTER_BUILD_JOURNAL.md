@@ -209,6 +209,90 @@ The live Vercel preview returned HTTP 200 from `/api/engineering/prs` and expose
 
 ---
 
+## Splinter 3 — Deployment evidence + release comparison
+
+### Problem
+
+Nexa could see code and PRs, but it still could not answer a more operational question: **which source commit is actually running in production versus preview?**
+
+A Git commit is source history. A deployment is a release event. Treating them as the same thing loses operational context.
+
+### Evidence boundary
+
+We added `server/deployments.js` and exposed:
+
+`GET /api/engineering/deployments`
+
+The first implementation intentionally uses GitHub deployment/status records because they are visible for this public repository without requiring a Vercel API token.
+
+This gives Nexa provider-neutral release evidence:
+
+- deployment environment
+- source ref/SHA
+- deployment state
+- creation time
+- environment URL
+- deployment creator
+
+Provider-specific Vercel build logs and runtime logs remain a separate authenticated integration rather than leaking or requesting secrets in the public layer.
+
+### UI component extraction
+
+Instead of growing `src/main.jsx` forever, the Deployment surface became its own `src/DeploymentView.jsx` component with its own `src/deployments.css` styles.
+
+**Course lesson:** component extraction is not just aesthetic. A feature boundary becomes easier to reason about, test, replace, and teach when the code ownership matches the product surface.
+
+### Data Bug 001 — valid page, incomplete evidence
+
+The first deployment implementation fetched the 12 most recent deployment records and searched that list for both Preview and Production.
+
+The endpoint returned valid HTTP 200 data, but every one of the 12 records was a feature-branch Preview. `latest.production` therefore became `null`, even though a healthy production deployment existed.
+
+**Root cause:** sampling bias from pagination. The recent page was not guaranteed to contain every environment.
+
+**Fix:** query recent deployments for the timeline **and query `environment=Production` independently** for the latest production release.
+
+The API now exposes its sampling assumption:
+
+```json
+{
+  "recentLimit": 12,
+  "productionQueriedSeparately": true,
+  "reason": "A recent preview-heavy page may not contain the latest production deployment."
+}
+```
+
+**Course principle:** a syntactically valid API response is not automatically complete evidence. Understand the sampling window and query semantics before making conclusions.
+
+### Runtime evidence after the fix
+
+The live preview verified:
+
+- latest production: `a476644`
+- production state: success
+- latest preview: `4f89b11`
+- preview state: success
+- preview and production point to different commits
+
+This is exactly what we expect while the feature branch is under development: the preview is ahead, while production remains pinned to the known-good main commit.
+
+### Verification
+
+The smoke test now verifies the deployment endpoint contract, including:
+
+- an `items` array
+- the evidence boundary
+- the explicit sampling boundary
+- independent production query flag
+
+The corresponding CI run completed successfully through install, Vite build, and smoke test. The Vercel preview endpoint returned HTTP 200 with both production and preview evidence after the pagination fix.
+
+### Interview language
+
+> “For deployment intelligence, I separated source history from release history. I initially sampled the most recent deployments, but the preview-heavy window excluded production. I corrected that by querying the latest production environment independently and exposing the sampling assumption in the API. That prevented a valid-but-incomplete page from being mistaken for complete operational evidence.”
+
+---
+
 ## Course capture checklist
 
 For every future splinter, record:
