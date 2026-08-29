@@ -48,11 +48,15 @@ async function deploymentSnapshot(deployment) {
 }
 
 export async function getDeploymentOverview() {
-  const deployments = await githubJson(`/repos/${NEXA_REPO}/deployments?per_page=12`);
-  const items = await Promise.all(deployments.map(deploymentSnapshot));
+  const [recentDeployments, productionDeployments] = await Promise.all([
+    githubJson(`/repos/${NEXA_REPO}/deployments?per_page=12`),
+    githubJson(`/repos/${NEXA_REPO}/deployments?environment=Production&per_page=1`)
+  ]);
 
-  const production = items.find((item) => item.production || item.environment === 'Production') || null;
-  const preview = items.find((item) => item.transient || item.environment !== 'Production') || null;
+  const items = await Promise.all(recentDeployments.map(deploymentSnapshot));
+  const productionRaw = Array.isArray(productionDeployments) ? productionDeployments[0] : null;
+  const production = productionRaw ? await deploymentSnapshot(productionRaw) : null;
+  const preview = items.find((item) => item.environment !== 'Production') || null;
 
   const facts = [];
   if (production) {
@@ -88,6 +92,11 @@ export async function getDeploymentOverview() {
     boundary: {
       evidence: 'This surface uses GitHub deployment/status evidence that is visible without provider secrets.',
       provider: 'Vercel-specific build/runtime logs remain a separate authenticated provider integration.'
+    },
+    sampling: {
+      recentLimit: 12,
+      productionQueriedSeparately: true,
+      reason: 'A recent preview-heavy page may not contain the latest production deployment.'
     }
   };
 }
