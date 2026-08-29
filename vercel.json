@@ -1,7 +1,15 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/incident.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{tests/**,__tests__/**,fixtures/**,evals/**}"
+    }
+  },
   "rewrites": [
+    { "source": "/api/incident", "destination": "/api/incident.py" },
     { "source": "/api/(.*)", "destination": "/api/index.js" }
   ]
 }
