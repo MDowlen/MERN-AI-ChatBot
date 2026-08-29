@@ -6,8 +6,19 @@ const { port } = server.address();
 const base = `http://127.0.0.1:${port}`;
 
 try {
-  const health = await fetch(`${base}/api/health`).then((r) => r.json());
-  if (health.status !== 'ok') throw new Error('health failed');
+  const healthResponse = await fetch(`${base}/api/health`);
+  const health = await healthResponse.json();
+  if (!healthResponse.ok || health.status !== 'ok') throw new Error('health failed');
+
+  const engineeringResponse = await fetch(`${base}/api/engineering/overview`);
+  const engineering = await engineeringResponse.json();
+  if (!engineeringResponse.ok) throw new Error('engineering overview failed');
+  if (engineering?.summary?.repositories !== 4) {
+    throw new Error('engineering overview did not return the four flagship repositories');
+  }
+  if (!Array.isArray(engineering.repositories) || engineering.repositories.length !== 4) {
+    throw new Error('engineering repository list failed');
+  }
 
   const created = await fetch(`${base}/api/conversations`, {
     method: 'POST',
@@ -22,7 +33,17 @@ try {
   }).then((r) => r.json());
 
   if (!reply?.conversation?.messages?.length) throw new Error('chat flow failed');
-  console.log(JSON.stringify({ health, messages: reply.conversation.messages.length, provider: reply.provider }, null, 2));
+
+  console.log(JSON.stringify({
+    health,
+    engineering: {
+      mode: engineering.mode,
+      repositories: engineering.summary.repositories,
+      available: engineering.summary.available
+    },
+    messages: reply.conversation.messages.length,
+    provider: reply.provider
+  }, null, 2));
 } finally {
   server.close();
 }
