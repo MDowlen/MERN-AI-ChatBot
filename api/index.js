@@ -9,6 +9,7 @@ import {
   listConversations
 } from '../server/store.js';
 import { generateAssistantReply } from '../server/assistant.js';
+import { buildCommandContext } from '../server/commandContext.js';
 import { getEngineeringOverview, getPullRequestOverview } from '../server/engineering.js';
 import { getDeploymentOverview } from '../server/deployments.js';
 
@@ -110,13 +111,23 @@ app.post('/api/conversations/:id/messages', async (req, res, next) => {
     const content = String(req.body?.content ?? '').trim();
     if (!content) return res.status(400).json({ error: 'Message is required' });
 
+    const surface = String(req.body?.workspace?.surface || 'conversations');
+    const workspaceContext = await buildCommandContext(surface);
+
     const withUser = await addMessage(req.params.id, 'user', content);
     if (!withUser) return res.status(404).json({ error: 'Conversation not found' });
 
-    const reply = await generateAssistantReply(content, withUser.messages);
+    const reply = await generateAssistantReply(content, withUser.messages, workspaceContext);
     const updated = await addMessage(req.params.id, 'assistant', reply.content);
 
-    res.json({ conversation: updated, provider: reply.provider });
+    res.json({
+      conversation: updated,
+      provider: reply.provider,
+      workspace: {
+        surface: workspaceContext.surface,
+        generatedAt: workspaceContext.generatedAt
+      }
+    });
   } catch (error) {
     next(error);
   }
