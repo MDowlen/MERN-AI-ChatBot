@@ -9,7 +9,7 @@ import {
   listConversations
 } from '../server/store.js';
 import { generateAssistantReply } from '../server/assistant.js';
-import { getEngineeringOverview } from '../server/engineering.js';
+import { getEngineeringOverview, getPullRequestOverview } from '../server/engineering.js';
 
 const app = express();
 
@@ -45,6 +45,18 @@ app.get('/api/engineering/overview', async (_req, res, next) => {
   try {
     res.json(await getEngineeringOverview());
   } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/engineering/prs', async (req, res, next) => {
+  try {
+    const repo = String(req.query.repo || 'MDowlen/MERN-AI-ChatBot');
+    res.json(await getPullRequestOverview(repo));
+  } catch (error) {
+    if (error.message.includes('allowlist')) {
+      return res.status(400).json({ error: error.message });
+    }
     next(error);
   }
 });
