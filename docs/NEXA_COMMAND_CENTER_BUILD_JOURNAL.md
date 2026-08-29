@@ -72,11 +72,47 @@ Turn the single-purpose chat layout into a multi-view engineering workspace with
 
 ### Backend addition
 
-Add an engineering overview service that can query public GitHub repository metadata without exposing credentials. A `GITHUB_TOKEN` may optionally raise rate limits later, but the first version works for the public portfolio repositories without requiring a secret.
+`server/engineering.js` adds a read-only engineering overview service. It queries public GitHub metadata for Nexa, ForgeContext, ForgePR, and ForgeIncident. `GITHUB_TOKEN` is optional and used only to raise API limits if configured later.
+
+`api/index.js` exposes the data at:
+
+`GET /api/engineering/overview`
+
+The existing conversation and health endpoints remain compatible.
+
+### Frontend addition
+
+`src/main.jsx` now owns a stable Command Center shell. The Conversations surface retains the original persistent chat behavior while Overview, Repositories, PR Risk, Deployments, Incidents, and System Health gain explicit UI boundaries.
+
+PR Risk, Deployments, and Incidents are intentionally scaffolded before their specialist integrations are wired. That makes each later integration an incremental change instead of another whole-UI rewrite.
 
 ### Concept this teaches
 
 **Evolutionary architecture.** Refactoring a working product is different from greenfield development. Preserve known-good behavior, introduce a stable shell, then migrate/integrate capabilities incrementally.
+
+### Verification expansion
+
+The original smoke test verified only health + conversation flow. Splinter 1 extended it to also verify that the engineering overview returns the four flagship repositories.
+
+We also added the repository's first GitHub Actions workflow so branch changes now run:
+
+```text
+checkout -> Node setup -> dependency install -> Vite build -> smoke test
+```
+
+### CI Failure 001 — cache configuration without a lockfile
+
+The first CI run failed before application code executed.
+
+**Observed failure:** `actions/setup-node` reported that no dependency lockfile existed. The workflow requested `cache: npm`, which expects `package-lock.json`, `npm-shrinkwrap.json`, or another supported lockfile. The same workflow also attempted `npm ci`, which is specifically a clean install from a lockfile.
+
+**Diagnosis:** environment/tooling configuration failure, not React/Express application failure.
+
+**Fix for this splinter:** remove lockfile-dependent npm caching and use `npm install` because the repository currently has no lockfile.
+
+**Why not hide the issue by inventing a lockfile?** A lockfile is a real reproducibility decision. We will add one deliberately in a later hardening splinter and study exactly what changes when dependency resolution becomes pinned.
+
+**Course lesson:** CI stages have prerequisites. A failed pipeline step should first be classified by layer: checkout, runtime setup, dependency resolution, build, test, or application runtime. Do not debug application code when the pipeline never reached it.
 
 ### Risk controls
 
