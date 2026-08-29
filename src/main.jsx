@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import DeploymentView from './DeploymentView.jsx';
 import './styles.css';
 
 const navItems = [
@@ -56,6 +57,7 @@ function App() {
   const [view, setView] = useState('overview');
   const [overview, setOverview] = useState(null);
   const [prOverview, setPrOverview] = useState(null);
+  const [deploymentOverview, setDeploymentOverview] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [health, setHealth] = useState(null);
@@ -74,15 +76,17 @@ function App() {
   async function load() {
     setError('');
     try {
-      const [healthData, engineering, prs, list] = await Promise.all([
+      const [healthData, engineering, prs, deployments, list] = await Promise.all([
         api('/api/health'),
         api('/api/engineering/overview'),
         api('/api/engineering/prs'),
+        api('/api/engineering/deployments'),
         api('/api/conversations')
       ]);
       setHealth(healthData);
       setOverview(engineering);
       setPrOverview(prs);
+      setDeploymentOverview(deployments);
       if (list.length) {
         setConversations(list);
         setActiveId((current) => current || list[0].id);
@@ -138,12 +142,13 @@ function App() {
 
   function OverviewView() {
     const summary = overview?.summary;
+    const latestPreview = deploymentOverview?.latest?.preview;
     return <div className="workspace-content">
       <div className="page-heading"><div><span className="eyebrow">ENGINEERING COMMAND CENTER</span><h2>System overview</h2><p>One workspace for code context, PR risk, deployments, incidents, conversations, and health.</p></div><button className="refresh-button" onClick={load}>↻ Refresh</button></div>
       <div className="metric-grid">
         <MetricCard label="Portfolio systems" value={summary?.repositories ?? '—'} detail="Nexa + Forge ecosystem" />
-        <MetricCard label="Reachable repos" value={summary?.available ?? '—'} detail={overview?.mode === 'authenticated-github' ? 'Authenticated GitHub API' : 'Public GitHub API'} />
         <MetricCard label="Open Nexa PRs" value={prOverview?.count ?? '—'} detail="Live GitHub pull requests" />
+        <MetricCard label="Latest preview" value={latestPreview?.shortSha || '—'} detail={latestPreview?.state || 'Deployment evidence'} />
         <MetricCard label="Runtime" value={health?.status || '—'} detail={health?.database || 'Checking dependencies'} />
       </div>
       <section className="command-section"><div className="section-title"><div><span>Connected architecture</span><h3>Nexa orchestrates; specialists stay specialized.</h3></div></div>
@@ -174,7 +179,8 @@ function App() {
       ['MongoDB', health?.database === 'mongodb-connected', health?.database],
       ['AI provider configured', health?.assistant === 'openai', health?.assistant],
       ['Engineering overview', Boolean(overview), overview ? overview.mode : 'loading'],
-      ['PR facts surface', Boolean(prOverview), prOverview ? `${prOverview.count} open PR(s)` : 'loading']
+      ['PR facts surface', Boolean(prOverview), prOverview ? `${prOverview.count} open PR(s)` : 'loading'],
+      ['Deployment evidence', Boolean(deploymentOverview), deploymentOverview ? `${deploymentOverview.count} recent record(s)` : 'loading']
     ];
     return <div className="workspace-content narrow"><div className="page-heading"><div><span className="eyebrow">DEPENDENCY TRUTH</span><h2>System Health</h2><p>Health means verifying dependencies instead of merely checking that environment variables exist.</p></div></div><div className="health-list">{rows.map(([label, ok, detail]) => <div className="health-row" key={label}><StatusDot active={ok} /><div><strong>{label}</strong><span>{detail || 'unknown'}</span></div></div>)}</div></div>;
   }
@@ -188,12 +194,12 @@ function App() {
   if (view === 'overview') content = <OverviewView />;
   else if (view === 'repositories') content = <RepositoriesView />;
   else if (view === 'pr-risk') content = <PRRiskView />;
+  else if (view === 'deployments') content = <DeploymentView data={deploymentOverview} onRefresh={load} />;
   else if (view === 'conversations') content = <ConversationsView />;
   else if (view === 'health') content = <HealthView />;
-  else if (view === 'deployments') content = <PlaceholderView eyebrow="RELEASE INTELLIGENCE" title="Deployments" description="Compare healthy and current releases, connect commits to deployments, and surface runtime evidence." learns="Observability joins source control and deployment state. A deployment is an immutable release artifact, not just a URL." />;
   else content = <PlaceholderView eyebrow="FORGEINCIDENT INTEGRATION" title="Incidents" description="Correlate logs, metrics, deployments, repository context, and prior postmortems into evidence-backed RCA." learns="Correlation creates hypotheses; evidence earns confidence; production-changing remediation requires explicit authority." />;
 
-  return <div className="app-shell command-shell"><aside className="sidebar command-sidebar"><div className="brand-row"><SparkMark /><div><strong>Nexa</strong><span>Engineering Command Center</span></div></div><button className="new-chat" onClick={newConversation}>+ Ask Nexa</button><div className="nav-label">Workspace</div><nav className="command-nav">{navItems.map(([id, label, icon]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}><span>{icon}</span>{label}{overview?.surfaces?.find((s) => s.id === id)?.status === 'next-splinter' && <i />}</button>)}</nav><div className="stack-card"><div className="stack-title">Current splinter</div><strong>PR evidence + risk facts</strong><span>Live GitHub PR discovery with deterministic size/churn/CI signals.</span></div></aside><main className="main-panel command-main"><header className="topbar"><div><h1>{titleMap[view]}</h1><p>feature/nexa-command-center · Splinter 2</p></div><div className="health-pill"><StatusDot active={health?.status === 'ok'} /><span>{health?.status === 'ok' ? 'System healthy' : 'Checking system'}</span></div></header>{error && view !== 'conversations' && <div className="global-error">{error}</div>}{content}</main></div>;
+  return <div className="app-shell command-shell"><aside className="sidebar command-sidebar"><div className="brand-row"><SparkMark /><div><strong>Nexa</strong><span>Engineering Command Center</span></div></div><button className="new-chat" onClick={newConversation}>+ Ask Nexa</button><div className="nav-label">Workspace</div><nav className="command-nav">{navItems.map(([id, label, icon]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}><span>{icon}</span>{label}{overview?.surfaces?.find((s) => s.id === id)?.status === 'next-splinter' && <i />}</button>)}</nav><div className="stack-card"><div className="stack-title">Current splinter</div><strong>Deployment evidence</strong><span>Source commits mapped to preview/production release records before rollback reasoning.</span></div></aside><main className="main-panel command-main"><header className="topbar"><div><h1>{titleMap[view]}</h1><p>feature/nexa-command-center · Splinter 3</p></div><div className="health-pill"><StatusDot active={health?.status === 'ok'} /><span>{health?.status === 'ok' ? 'System healthy' : 'Checking system'}</span></div></header>{error && view !== 'conversations' && <div className="global-error">{error}</div>}{content}</main></div>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
