@@ -114,13 +114,100 @@ The first CI run failed before application code executed.
 
 **Course lesson:** CI stages have prerequisites. A failed pipeline step should first be classified by layer: checkout, runtime setup, dependency resolution, build, test, or application runtime. Do not debug application code when the pipeline never reached it.
 
-### Risk controls
+### Splinter 1 verification result
 
-- Production `main` remains unchanged.
-- Existing conversation endpoints stay compatible.
-- MongoDB persistence stays intact.
-- The engineering overview is read-only.
-- No repository mutation is introduced in this splinter.
+CI run #2 completed successfully after the workflow fix. Dependency installation, Vite build, and the expanded smoke test all passed.
+
+The Vercel feature-branch preview also returned HTTP 200 from `/api/engineering/overview` and resolved all four flagship repositories. This proves the read-only integration at runtime rather than only proving that the frontend compiled.
+
+---
+
+## Splinter 2 — PR Risk facts + dogfooding
+
+### Problem
+
+The Command Center needed a real pull-request surface, but duplicating ForgePR inside Nexa would create two competing sources of truth for PR review logic.
+
+### Authority boundary
+
+We split responsibility deliberately:
+
+```text
+Nexa
+  ├── PR discovery
+  ├── metadata presentation
+  ├── deterministic size/churn/CI facts
+  └── orchestration
+
+ForgePR
+  ├── grounded repository evidence
+  ├── semantic quality/safety findings
+  ├── test generation
+  ├── isolated test execution
+  └── specialist decision gate
+```
+
+This is an example of **bounded responsibility**. The product shell can aggregate specialist outputs without reimplementing specialist intelligence.
+
+### Dogfooding
+
+We opened Draft PR #1, `Nexa Command Center upgrade`, from the feature branch into `main` and used the real PR as the first PR Risk dataset.
+
+The PR Risk endpoint is:
+
+`GET /api/engineering/prs`
+
+`server/engineering.js` fetches GitHub PR metadata plus combined commit status and calculates deterministic facts from values GitHub can prove directly.
+
+### Deterministic risk model
+
+The first risk model intentionally uses simple explainable thresholds:
+
+- 8+ changed files: medium surface fact
+- 20+ changed files: large surface fact
+- 250+ lines of churn: medium churn fact
+- 800+ lines of churn: large churn fact
+- failing/error commit status: critical fact
+- pending status: informational fact
+
+The total score maps to low, medium, or high risk **surface**. This does not mean a high-risk PR contains a bug. It means the change deserves more review attention because its measurable surface is larger.
+
+### Runtime result from the real PR
+
+At preview verification time Draft PR #1 had:
+
+- 9 changed files
+- 714 additions
+- 304 deletions
+- 1,018 total lines of churn
+- 15 commits
+- successful combined CI status
+- clean mergeable state
+
+Nexa classified the deterministic surface as **high** because the PR crossed the medium-file threshold and large-churn threshold. It did **not** claim a semantic defect.
+
+### Testing lesson — contract vs temporary fixture
+
+The smoke test verifies that `/api/engineering/prs` returns:
+
+- a valid `items` array
+- the explicit Nexa/ForgePR authority boundary
+
+It does **not** assert that PR #1 must always exist. Once the Command Center is merged, PR #1 will close. A smoke test tied to that temporary state would turn a successful release into a test failure.
+
+**Course principle:** test durable contracts, not incidental demo state.
+
+### Splinter 2 verification result
+
+The exact-head pull-request CI run completed successfully: Node setup, install, Vite build, smoke test, and cleanup all passed.
+
+The live Vercel preview returned HTTP 200 from `/api/engineering/prs` and exposed the real Draft PR #1 facts above.
+
+### Interview language
+
+> “When I integrated PR risk into Nexa, I separated observable facts from specialist AI review. Nexa computes deterministic surface signals such as file count, churn, and CI state, while ForgePR remains responsible for grounded semantic findings and generated-test workflows. That kept the command center from becoming a duplicate review engine and made each layer's authority explicit.”
+
+---
 
 ## Course capture checklist
 
