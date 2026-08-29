@@ -189,7 +189,7 @@ export async function getEngineeringOverview() {
       { id: 'overview', label: 'Overview', status: 'live' },
       { id: 'repositories', label: 'Repositories', status: 'live' },
       { id: 'pr-risk', label: 'PR Risk', status: 'live' },
-      { id: 'deployments', label: 'Deployments', status: 'next-splinter' },
+      { id: 'deployments', label: 'Deployments', status: 'live' },
       { id: 'incidents', label: 'Incidents', status: 'next-splinter' },
       { id: 'conversations', label: 'Conversations', status: 'live' },
       { id: 'health', label: 'System Health', status: 'live' }
