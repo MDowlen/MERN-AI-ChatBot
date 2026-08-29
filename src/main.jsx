@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import DeploymentView from './DeploymentView.jsx';
+import IncidentView from './IncidentView.jsx';
 import './styles.css';
 
 const navItems = [
@@ -169,10 +170,6 @@ function App() {
     </div>;
   }
 
-  function PlaceholderView({ title, eyebrow, description, learns }) {
-    return <div className="workspace-content narrow"><div className="page-heading"><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2><p>{description}</p></div></div><div className="future-panel"><SparkMark /><h3>This surface is intentionally scaffolded before integration.</h3><p>The stable UI boundary already exists. A later splinter adds the data/tool implementation without rewriting the shell.</p><div className="learning-box"><strong>What this teaches</strong><p>{learns}</p></div></div></div>;
-  }
-
   function HealthView() {
     const rows = [
       ['Application', health?.status === 'ok', health?.status],
@@ -195,11 +192,11 @@ function App() {
   else if (view === 'repositories') content = <RepositoriesView />;
   else if (view === 'pr-risk') content = <PRRiskView />;
   else if (view === 'deployments') content = <DeploymentView data={deploymentOverview} onRefresh={load} />;
+  else if (view === 'incidents') content = <IncidentView />;
   else if (view === 'conversations') content = <ConversationsView />;
-  else if (view === 'health') content = <HealthView />;
-  else content = <PlaceholderView eyebrow="FORGEINCIDENT INTEGRATION" title="Incidents" description="Correlate logs, metrics, deployments, repository context, and prior postmortems into evidence-backed RCA." learns="Correlation creates hypotheses; evidence earns confidence; production-changing remediation requires explicit authority." />;
+  else content = <HealthView />;
 
-  return <div className="app-shell command-shell"><aside className="sidebar command-sidebar"><div className="brand-row"><SparkMark /><div><strong>Nexa</strong><span>Engineering Command Center</span></div></div><button className="new-chat" onClick={newConversation}>+ Ask Nexa</button><div className="nav-label">Workspace</div><nav className="command-nav">{navItems.map(([id, label, icon]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}><span>{icon}</span>{label}{overview?.surfaces?.find((s) => s.id === id)?.status === 'next-splinter' && <i />}</button>)}</nav><div className="stack-card"><div className="stack-title">Current splinter</div><strong>Deployment evidence</strong><span>Source commits mapped to preview/production release records before rollback reasoning.</span></div></aside><main className="main-panel command-main"><header className="topbar"><div><h1>{titleMap[view]}</h1><p>feature/nexa-command-center · Splinter 3</p></div><div className="health-pill"><StatusDot active={health?.status === 'ok'} /><span>{health?.status === 'ok' ? 'System healthy' : 'Checking system'}</span></div></header>{error && view !== 'conversations' && <div className="global-error">{error}</div>}{content}</main></div>;
+  return <div className="app-shell command-shell"><aside className="sidebar command-sidebar"><div className="brand-row"><SparkMark /><div><strong>Nexa</strong><span>Engineering Command Center</span></div></div><button className="new-chat" onClick={newConversation}>+ Ask Nexa</button><div className="nav-label">Workspace</div><nav className="command-nav">{navItems.map(([id, label, icon]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}><span>{icon}</span>{label}{overview?.surfaces?.find((s) => s.id === id)?.status === 'next-splinter' && <i />}</button>)}</nav><div className="stack-card"><div className="stack-title">Current splinter</div><strong>ForgeIncident integration</strong><span>React + Node orchestration calling the real Python specialist through a typed serverless boundary.</span></div></aside><main className="main-panel command-main"><header className="topbar"><div><h1>{titleMap[view]}</h1><p>feature/nexa-command-center · Splinter 4</p></div><div className="health-pill"><StatusDot active={health?.status === 'ok'} /><span>{health?.status === 'ok' ? 'System healthy' : 'Checking system'}</span></div></header>{error && view !== 'conversations' && <div className="global-error">{error}</div>}{content}</main></div>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
