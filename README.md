@@ -1,45 +1,139 @@
-# Nexa — MERN AI ChatBot
+# Nexa — AI Engineering Command Center
 
-Nexa is a live, full-stack conversation workspace built with **MongoDB, Express, React, and Node.js**, with production AI responses powered through the OpenAI Responses API.
+Nexa is a production **AI engineering command center** that evolved from a MERN conversation workspace into a mixed-runtime operational engineering product. It unifies repository visibility, deterministic pull-request risk, deployment evidence, incident RCA, persistent engineering conversations, system health, and context-aware AI assistance.
 
 **Live app:** https://mern-ai-chat-bot-one.vercel.app
 
-## Production status
+## What Nexa does
 
-- React 19 + Vite frontend
-- Express 5 REST API on Node.js
-- MongoDB Atlas persistence through Mongoose
-- OpenAI Responses API integration
-- Vercel production deployment
-- Conversation creation, deletion, history search, optimistic updates, and error handling
-- Responsive desktop/mobile interface
+- **Overview** — summarizes the Nexa + Forge engineering ecosystem.
+- **Repositories** — reads current repository metadata and latest commits.
+- **PR Risk** — surfaces deterministic file-count, code-churn, and CI facts while keeping ForgePR semantic review as a separate specialist boundary.
+- **Deployments** — maps source commits to preview/production release evidence and explicitly handles pagination/sampling assumptions.
+- **Incidents** — invokes a real Python ForgeIncident workflow for signal correlation, RCA hypotheses, evidence, falsifiers, and approval-aware remediation.
+- **Conversations** — preserves MongoDB-backed persistent engineering chat history.
+- **System Health** — verifies the application and MongoDB dependency state.
+- **Ask Nexa** — grounds chat against the selected workspace surface; the browser sends intent while the server independently rebuilds authoritative evidence.
 
-## Architecture
+## Production architecture
 
 ```text
-React + Vite
-   │
-   ├── GET/POST/DELETE /api/conversations
-   ├── POST /api/conversations/:id/messages
-   │
-Express 5 / Node.js
-   │
-   ├── Mongoose → MongoDB Atlas
-   └── OpenAI Responses API
+                         NEXA COMMAND CENTER
+
+React + Vite UI
+      |
+      +--> repositories / PRs / deployments / health
+      |                |
+      |                v
+      |          Express 5 / Node.js
+      |             /        \
+      |            v          v
+      |       GitHub APIs   MongoDB Atlas
+      |            |
+      |            v
+      |     server-grounded context
+      |            |
+      +----------> OpenAI Responses API
+      |
+      +--> /api/incident
+                 |
+                 v
+          FastAPI / Python
+                 |
+                 v
+          ForgeIncident v0.3.1
 ```
 
-## Why I built it
+Vercel deploys both Node.js and Python functions in the same project.
 
-This project demonstrates the full path from UI to API to persistent data to model response in one deployable application. The goal was to show practical full-stack engineering rather than a static AI mockup.
+## Specialist boundaries
 
-## Key engineering decisions
+Nexa intentionally does not duplicate every specialist algorithm.
 
-- A single Vercel project serves both the Vite frontend and Express API.
-- MongoDB Atlas stores conversation history so data survives redeploys and serverless restarts.
-- Mongoose keeps the conversation schema and persistence layer explicit.
-- The frontend uses optimistic updates so messages appear immediately while the server request completes.
-- The backend keeps API keys and database credentials server-side in environment variables.
-- A deterministic demo fallback remains available for local development when provider credentials are omitted.
+```text
+Nexa         = product surface + discovery + orchestration + presentation
+ForgeContext = grounded repository intelligence
+ForgePR      = semantic PR review + test-generation specialist
+ForgeIncident= evidence-backed incident/RCA specialist
+```
+
+A core design rule is **observable facts and AI judgment are not the same thing**. GitHub/API-derived values such as changed-file count, code churn, CI state, or deployment SHA are treated as deterministic evidence. Model explanations and causal recommendations remain advisory unless separately verified.
+
+## Context-aware Ask Nexa
+
+The client sends only the selected workspace intent:
+
+```json
+{
+  "content": "What does the current PR evidence tell me?",
+  "workspace": {
+    "surface": "pr-risk"
+  }
+}
+```
+
+The Express server then rebuilds the current evidence itself before calling the assistant. This keeps client state from becoming the source of truth for engineering decisions.
+
+## Cross-language incident integration
+
+The Incident surface sends an `IncidentInput` JSON contract to a Python FastAPI function. That function executes ForgeIncident and returns a typed `IncidentReport` containing:
+
+- normalized/correlated signals
+- ranked root-cause hypotheses
+- confidence values
+- evidence references
+- falsifiers
+- remediation steps
+- explicit human-approval requirements
+
+The current serverless profile runs lightweight signal-based RCA. ForgeContext repository grounding remains an optional heavier ForgeIncident profile.
+
+## Engineering failures captured during the build
+
+This project intentionally preserves its build journal and splinter documentation because the failures are part of the engineering story:
+
+- GitHub Actions npm caching failed because the repo had no lockfile; CI was corrected rather than misdiagnosing application code.
+- Deployment evidence initially missed production due to a preview-heavy pagination sample; production is now queried independently.
+- The first ForgeIncident Python bundle was **643 MB**, exceeding Vercel's 500 MB function limit; ForgeIncident v0.3.1 introduced a lightweight serverless dependency profile.
+- The first Python route returned 404 because Vercel routing and FastAPI routing were mismatched.
+- An intermediate frontend commit imported a stylesheet before the file existed, proving why compile-time dependencies should land atomically under continuous deployment.
+- The release-gate smoke test hit GitHub's unauthenticated shared-runner rate limit; CI now uses GitHub Actions' ephemeral `GITHUB_TOKEN` only for the smoke-test process.
+
+See `docs/` for the detailed build/course source material.
+
+## CI
+
+GitHub Actions has two independent lanes:
+
+```text
+Node lane
+checkout -> Node 24 -> npm install -> Vite build -> grounded smoke test
+
+Python lane
+checkout -> Python 3.12 -> lightweight ForgeIncident install -> specialist contract test
+```
+
+The smoke test validates health, repository overview, PR/deployment evidence contracts, conversation persistence, and workspace-grounded chat behavior.
+
+## API surface
+
+### Engineering
+
+- `GET /api/health`
+- `GET /api/engineering/overview`
+- `GET /api/engineering/prs`
+- `GET /api/engineering/deployments`
+- `GET /api/incident`
+- `GET /api/incident?demo=true`
+- `POST /api/incident`
+
+### Conversations
+
+- `GET /api/conversations`
+- `POST /api/conversations`
+- `GET /api/conversations/:id`
+- `DELETE /api/conversations/:id`
+- `POST /api/conversations/:id/messages`
 
 ## Local setup
 
@@ -49,16 +143,19 @@ cp .env.example .env.local
 npm run dev
 ```
 
-The React app runs on `http://localhost:5173` and proxies `/api` to the local Express server on port `3001`.
+For the JavaScript application, the React frontend runs through Vite and proxies `/api` to the local Express server. The deployed Python ForgeIncident adapter is a Vercel function and has dependencies listed in `requirements.txt`.
 
 ## Environment variables
 
-| Variable | Required for production | Purpose |
-| --- | --- | --- |
-| `MONGODB_URI` | Yes | MongoDB Atlas persistence |
-| `OPENAI_API_KEY` | Yes | Live AI responses |
-| `OPENAI_MODEL` | No | Optional model override |
-| `PORT` | No | Local API port; defaults to `3001` |
+| Variable | Purpose |
+| --- | --- |
+| `MONGODB_URI` | MongoDB Atlas conversation persistence |
+| `OPENAI_API_KEY` | Live Ask Nexa model responses |
+| `OPENAI_MODEL` | Optional model override |
+| `GITHUB_TOKEN` | Optional higher GitHub API limits; CI uses its ephemeral Actions token |
+| `PORT` | Local Express API port |
+
+Credentials remain server-side; no API keys belong in the browser or repository.
 
 ## Verification
 
@@ -67,16 +164,7 @@ npm run build
 npm run check
 ```
 
-The smoke test checks `/api/health`, creates a conversation, sends a message, and validates the assistant response flow. Production QA also verifies the live conversation endpoint and Vercel runtime logs.
-
-## API surface
-
-- `GET /api/health`
-- `GET /api/conversations`
-- `POST /api/conversations`
-- `GET /api/conversations/:id`
-- `DELETE /api/conversations/:id`
-- `POST /api/conversations/:id/messages`
+Production verification additionally checks the live Vercel deployment, MongoDB-connected health, GitHub engineering evidence, Python incident execution, and runtime error logs.
 
 ## Repository
 
