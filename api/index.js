@@ -36,10 +36,10 @@ app.get('/api/health', async (_req, res) => {
 
   res.status(healthy ? 200 : 503).json({
     status: healthy ? 'ok' : 'degraded',
-    stack: ['MongoDB', 'Express', 'React', 'Node.js'],
+    stack: ['MongoDB', 'Express', 'React', 'Node.js', 'Python'],
     database,
     assistant: process.env.OPENAI_API_KEY ? 'openai' : 'demo',
-    commandCenter: 'feature/nexa-command-center'
+    commandCenter: 'nexa-command-center'
   });
 });
 
