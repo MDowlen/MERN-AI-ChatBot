@@ -29,6 +29,8 @@ jobs:
 
       - name: Run smoke test
         run: npm run check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   python-specialist:
     runs-on: ubuntu-latest
