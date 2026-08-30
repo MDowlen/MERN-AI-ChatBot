@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/nexa-command-center
+  pull_request:
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run smoke test
+        run: npm run check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  python-specialist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lightweight specialist
+        run: pip install -r requirements.txt
+
+      - name: Verify ForgeIncident contract
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timedelta, timezone
+          from forge_incident.models import IncidentInput
+          from forge_incident.runner import run_incident
+
+          start = datetime.now(timezone.utc)
+          incident = IncidentInput.model_validate({
+              "incident_id": "ci-specialist-contract",
+              "title": "Deployment regression contract test",
+              "repo_path": ".",
+              "signals": [
+                  {
+                      "kind": "deployment",
+                      "timestamp": start.isoformat(),
+                      "service": "api",
+                      "message": "deployment completed",
+                      "source": "ci",
+                  },
+                  {
+                      "kind": "metric",
+                      "timestamp": (start + timedelta(minutes=2)).isoformat(),
+                      "service": "api",
+                      "message": "error rate increased",
+                      "value": 12.0,
+                      "unit": "percent",
+                      "source": "ci",
+                  },
+              ],
+          })
+          report = run_incident(incident)
+          assert report.incident_id == "ci-specialist-contract"
+          assert report.hypotheses
+          assert report.remediation
+          assert report.context.get("mode") == "signal-only"
+          print(report.summary)
+          PY

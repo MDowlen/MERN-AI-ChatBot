@@ -9,6 +9,9 @@ import {
   listConversations
 } from '../server/store.js';
 import { generateAssistantReply } from '../server/assistant.js';
+import { buildCommandContext } from '../server/commandContext.js';
+import { getEngineeringOverview, getPullRequestOverview } from '../server/engineering.js';
+import { getDeploymentOverview } from '../server/deployments.js';
 
 const app = express();
 
@@ -35,8 +38,37 @@ app.get('/api/health', async (_req, res) => {
     status: healthy ? 'ok' : 'degraded',
     stack: ['MongoDB', 'Express', 'React', 'Node.js'],
     database,
-    assistant: process.env.OPENAI_API_KEY ? 'openai' : 'demo'
+    assistant: process.env.OPENAI_API_KEY ? 'openai' : 'demo',
+    commandCenter: 'feature/nexa-command-center'
   });
+});
+
+app.get('/api/engineering/overview', async (_req, res, next) => {
+  try {
+    res.json(await getEngineeringOverview());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/engineering/prs', async (req, res, next) => {
+  try {
+    const repo = String(req.query.repo || 'MDowlen/MERN-AI-ChatBot');
+    res.json(await getPullRequestOverview(repo));
+  } catch (error) {
+    if (error.message.includes('allowlist')) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
+app.get('/api/engineering/deployments', async (_req, res, next) => {
+  try {
+    res.json(await getDeploymentOverview());
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get('/api/conversations', async (_req, res, next) => {
@@ -79,13 +111,23 @@ app.post('/api/conversations/:id/messages', async (req, res, next) => {
     const content = String(req.body?.content ?? '').trim();
     if (!content) return res.status(400).json({ error: 'Message is required' });
 
+    const surface = String(req.body?.workspace?.surface || 'conversations');
+    const workspaceContext = await buildCommandContext(surface);
+
     const withUser = await addMessage(req.params.id, 'user', content);
     if (!withUser) return res.status(404).json({ error: 'Conversation not found' });
 
-    const reply = await generateAssistantReply(content, withUser.messages);
+    const reply = await generateAssistantReply(content, withUser.messages, workspaceContext);
     const updated = await addMessage(req.params.id, 'assistant', reply.content);
 
-    res.json({ conversation: updated, provider: reply.provider });
+    res.json({
+      conversation: updated,
+      provider: reply.provider,
+      workspace: {
+        surface: workspaceContext.surface,
+        generatedAt: workspaceContext.generatedAt
+      }
+    });
   } catch (error) {
     next(error);
   }
