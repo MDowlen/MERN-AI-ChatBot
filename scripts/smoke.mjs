@@ -44,13 +44,24 @@ try {
     body: '{}'
   }).then((r) => r.json());
 
-  const reply = await fetch(`${base}/api/conversations/${created.id}/messages`, {
+  const replyResponse = await fetch(`${base}/api/conversations/${created.id}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: 'Explain MERN in one paragraph.' })
-  }).then((r) => r.json());
+    body: JSON.stringify({
+      content: 'What does the current PR evidence tell me?',
+      workspace: { surface: 'pr-risk' }
+    })
+  });
+  const reply = await replyResponse.json();
 
+  if (!replyResponse.ok) throw new Error('workspace-grounded chat flow failed');
   if (!reply?.conversation?.messages?.length) throw new Error('chat flow failed');
+  if (reply?.workspace?.surface !== 'pr-risk') {
+    throw new Error('assistant did not preserve requested workspace surface');
+  }
+  if (!reply.conversation.messages.at(-1)?.content?.toLowerCase().includes('deterministic')) {
+    throw new Error('demo assistant did not use PR workspace evidence');
+  }
 
   console.log(JSON.stringify({
     health,
@@ -69,8 +80,12 @@ try {
       preview: deploymentOverview.latest?.preview?.shortSha || null,
       contractValid: true
     },
-    messages: reply.conversation.messages.length,
-    provider: reply.provider
+    workspaceChat: {
+      surface: reply.workspace.surface,
+      provider: reply.provider,
+      groundedContractValid: true
+    },
+    messages: reply.conversation.messages.length
   }, null, 2));
 } finally {
   server.close();
