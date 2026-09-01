@@ -83,6 +83,74 @@ The surface preserves the existing authority rule:
 
 Nexa displays measurable change surface and CI evidence. ForgePR remains responsible for grounded semantic findings and generated-test workflows.
 
+## Splinter D — Deployment intelligence
+
+Updated `src/DeploymentView.jsx` and added `src/premium-deployments.css`.
+
+The Deployment workspace now treats release evidence as the primary visual hierarchy:
+
+- production vs preview comparison at the top
+- source SHA/ref, state, environment, and release time
+- explicit visual notice when preview and production point to different commits
+- recent release lineage
+- deterministic release-fact inspector
+- sampling-boundary explanation retained from the earlier pagination bug
+
+Concept being learned: **information design should match the engineering question.** The page is built to answer “what is live, what is ahead, and what evidence proves it?” before showing secondary detail.
+
+## Splinter E — Incident RCA workspace
+
+Updated `src/IncidentView.jsx` and added `src/premium-incidents.css`.
+
+The Incident workspace now follows the approved operational anatomy:
+
+1. signal timeline
+2. ranked hypotheses with confidence
+3. evidence, falsifiers, and remediation inspector
+
+The UI makes risky actions visually distinct:
+
+- remediation requiring human approval receives an explicit approval state
+- safer automated actions are separately labeled
+- confidence is visible but is not presented as certainty
+- falsifiers remain adjacent to the leading hypothesis evidence
+
+Concept being learned: **visual hierarchy can enforce epistemic and operational boundaries.** A recommendation must never look like an action that already executed.
+
+## Splinter F — Premium Conversations / Ask Nexa
+
+Added `src/premium-conversations.css` and loaded it through `PremiumShell`.
+
+The existing grounded-chat behavior remains unchanged while the presentation becomes a premium engineering conversation surface:
+
+- slim conversation-history rail
+- always-visible grounding-context bar
+- calmer assistant/user message rhythm
+- evidence-ready assistant canvas
+- refined empty state and suggested questions
+- sticky command-style composer
+- responsive single-pane conversation view on smaller devices
+
+The trust rule is preserved:
+
+> Client supplies intent; server supplies authority.
+
+Concept being learned: **a visual redesign should not casually rewrite a correct trust model.** Presentation and interaction can change while the grounding contract remains stable.
+
+## Splinter G — Repositories + System Health polish
+
+Added `src/premium-utility.css`.
+
+These lower-frequency surfaces were polished without introducing new product concepts:
+
+- denser repository evidence cards
+- clearer latest-commit presentation
+- semantic availability states
+- dependency-truth health rows
+- consistent mobile collapse
+
+Concept being learned: **consistency is part of product quality.** A premium shell fails if secondary screens visibly belong to an older design system.
+
 ## Verification discipline
 
 Each UI splinter still runs the existing mixed-runtime gates:
@@ -94,11 +162,15 @@ Each UI splinter still runs the existing mixed-runtime gates:
 
 The redesign is not allowed to weaken backend verification simply because the change is visual.
 
-## Next redesign splinters
+## Final release gate
 
-- Deployments: production-vs-preview release intelligence
-- Incidents: timeline + hypotheses + evidence/falsifier/remediation inspector
-- Conversations: premium context-aware Ask Nexa thread/composer
-- Repositories + System Health polish
-- responsive/accessibility/motion QA
-- final visual comparison against approved concept before release
+Before this branch can replace production:
+
+- exact-head Node/Vite + grounded smoke CI must pass
+- exact-head Python specialist CI must pass
+- mixed-runtime Vercel preview must reach READY
+- command-center evidence endpoints must return healthy runtime responses
+- desktop and mobile layout must be visually inspected against the approved concept
+- keyboard command palette and reduced-motion/focus behavior must be checked
+- no critical information may be clipped or hidden on small screens
+- production `main` remains untouched until those checks pass
