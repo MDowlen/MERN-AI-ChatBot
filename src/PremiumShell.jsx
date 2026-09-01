@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './premium-conversations.css';
+import './premium-utility.css';
 
 const icons = {
   overview: '◫', repositories: '▦', 'pr-risk': '⑂', deployments: '⇧', incidents: '◇', conversations: '◌', health: '◉'
