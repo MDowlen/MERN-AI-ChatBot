@@ -1,98 +1,101 @@
 import React from 'react';
+import './premium-deployments.css';
 
-function ReleaseCard({ label, deployment }) {
+function EnvironmentCard({ label, deployment }) {
   if (!deployment) {
     return (
-      <article className="release-card empty-release">
-        <span>{label}</span>
-        <strong>No visible deployment</strong>
-        <small>No release evidence was returned for this environment.</small>
+      <article className="environment-card empty">
+        <header><span>{label}</span><i className="environment-state">unknown</i></header>
+        <div className="environment-sha">—</div>
+        <p>No visible deployment evidence was returned for this environment.</p>
       </article>
     );
   }
 
   return (
-    <article className="release-card">
-      <div className="release-card-top">
+    <article className="environment-card">
+      <header>
         <span>{label}</span>
-        <i className={`release-state state-${deployment.state}`}>{deployment.state}</i>
+        <i className={`environment-state state-${deployment.state}`}>{deployment.state}</i>
+      </header>
+      <div className="environment-sha">{deployment.shortSha || 'unknown'}</div>
+      <div className="environment-meta">
+        <div><span>Environment</span><b>{deployment.environment || label}</b></div>
+        <div><span>Released</span><b>{deployment.createdAt ? new Date(deployment.createdAt).toLocaleString() : 'Unknown'}</b></div>
+        <div><span>Source ref</span><code>{deployment.ref || deployment.sha || 'unknown'}</code></div>
+        <div><span>State</span><b>{deployment.state || 'unknown'}</b></div>
       </div>
-      <strong>{deployment.shortSha || 'unknown'}</strong>
-      <code>{deployment.environment}</code>
-      <small>{deployment.createdAt ? new Date(deployment.createdAt).toLocaleString() : 'Unknown time'}</small>
-      {deployment.environmentUrl && (
-        <a href={deployment.environmentUrl} target="_blank" rel="noreferrer">Open deployment ↗</a>
-      )}
+      {deployment.environmentUrl && <a href={deployment.environmentUrl} target="_blank" rel="noreferrer">Open deployment ↗</a>}
     </article>
   );
 }
 
 export default function DeploymentView({ data, onRefresh }) {
   const latest = data?.latest || {};
+  const production = latest.production;
+  const preview = latest.preview;
+  const differs = Boolean(production?.sha && preview?.sha && production.sha !== preview.sha);
+
   return (
-    <div className="workspace-content">
-      <div className="page-heading">
+    <div className="premium-deployments">
+      <div className="deploy-head">
         <div>
-          <span className="eyebrow">SPLINTER 3 · RELEASE EVIDENCE</span>
-          <h2>Deployments</h2>
-          <p>Connect source commits to release environments before making rollback or incident claims.</p>
+          <h1>Deployments</h1>
+          <p>See exactly what is running in production, what is ahead in preview, and which release evidence supports that conclusion.</p>
         </div>
-        <button className="refresh-button" onClick={onRefresh}>↻ Refresh</button>
+        <button onClick={onRefresh}>↻ Refresh evidence</button>
       </div>
 
-      <div className="boundary-note">
-        <strong>Evidence boundary</strong>
-        <span>{data?.boundary?.evidence || 'Loading deployment evidence…'}</span>
-        <span>{data?.boundary?.provider || ''}</span>
+      <div className="environment-compare">
+        <EnvironmentCard label="Production" deployment={production} />
+        <div className="deploy-versus">VS</div>
+        <EnvironmentCard label="Preview" deployment={preview} />
       </div>
 
-      <div className="release-compare">
-        <ReleaseCard label="Production" deployment={latest.production} />
-        <div className="release-versus">vs</div>
-        <ReleaseCard label="Latest preview" deployment={latest.preview} />
-      </div>
-
-      <section className="command-section">
-        <div className="section-title">
-          <div><span>Deterministic release facts</span><h3>What the deployment evidence proves</h3></div>
+      <div className="release-relation">
+        <i />
+        <div>
+          <strong>{differs ? 'Preview and production point to different commits.' : 'Preview and production currently align.'}</strong>
+          <span>{differs ? 'Nexa treats that difference as release evidence—not automatically as a problem.' : 'The visible release evidence points to the same source state.'}</span>
         </div>
-        <div className="release-facts">
-          {data?.facts?.length ? data.facts.map((fact) => (
-            <div className="release-fact" key={fact.code}>
-              <code>{fact.code}</code>
-              <p>{fact.detail}</p>
-              <span>{fact.state}</span>
+      </div>
+
+      <div className="release-layout">
+        <section className="release-panel">
+          <header><div><span>Release lineage</span><h2>Recent deployment history</h2></div></header>
+          <div className="release-timeline">
+            {data?.items?.length ? data.items.map((item) => (
+              <article className="release-line" key={item.id}>
+                <i className={`dot ${item.state}`} />
+                <div><strong>{item.environment}</strong><small>{item.createdAt ? new Date(item.createdAt).toLocaleString() : 'Unknown time'}</small></div>
+                <code>{item.shortSha || 'unknown'}</code>
+                <span>{item.state}</span>
+                {item.environmentUrl ? <a href={item.environmentUrl} target="_blank" rel="noreferrer">Open ↗</a> : <em>—</em>}
+              </article>
+            )) : <p className="empty-copy">No deployment records are available yet.</p>}
+          </div>
+        </section>
+
+        <aside className="release-panel">
+          <header><div><span>Deterministic evidence</span><h2>What Nexa can prove</h2></div></header>
+          <div className="release-fact-list">
+            {data?.facts?.length ? data.facts.map((fact) => (
+              <article className="release-fact-item" key={fact.code}>
+                <code>{fact.code}</code>
+                <p>{fact.detail}</p>
+                <span>{fact.state}</span>
+              </article>
+            )) : <p className="empty-copy">No deterministic release facts are available.</p>}
+          </div>
+
+          {data?.sampling && (
+            <div className="sampling-note">
+              <strong>Sampling boundary</strong>
+              <p>{data.sampling.reason} Production is queried separately from the recent {data.sampling.recentLimit}-item window so preview-heavy history cannot create a false “missing production” conclusion.</p>
             </div>
-          )) : <p className="empty-copy">No release facts are available yet.</p>}
-        </div>
-      </section>
-
-      <section className="command-section">
-        <div className="section-title">
-          <div><span>Recent release timeline</span><h3>Latest GitHub deployment records</h3></div>
-        </div>
-        <div className="deployment-table">
-          {data?.items?.map((item) => (
-            <article className="deployment-row" key={item.id}>
-              <div className={`deployment-dot state-${item.state}`} />
-              <div>
-                <strong>{item.environment}</strong>
-                <small>{item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}</small>
-              </div>
-              <code>{item.shortSha || 'unknown'}</code>
-              <span>{item.state}</span>
-              {item.environmentUrl ? <a href={item.environmentUrl} target="_blank" rel="noreferrer">Open ↗</a> : <em>—</em>}
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {data?.sampling && (
-        <div className="learning-box deployment-learning">
-          <strong>Sampling lesson</strong>
-          <p>{data.sampling.reason} Production is queried independently instead of assuming it appears inside the {data.sampling.recentLimit}-item recent window.</p>
-        </div>
-      )}
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
