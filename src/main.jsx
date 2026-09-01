@@ -4,9 +4,11 @@ import DeploymentView from './DeploymentView.jsx';
 import IncidentView from './IncidentView.jsx';
 import PremiumShell from './PremiumShell.jsx';
 import PremiumOverview from './PremiumOverview.jsx';
+import PremiumPRRisk from './PremiumPRRisk.jsx';
 import './styles.css';
 import './context.css';
 import './premium.css';
+import './premium-pr.css';
 
 const surfaceLabels = {
   overview: 'Overview', repositories: 'Repositories', 'pr-risk': 'PR Risk', deployments: 'Deployments', incidents: 'Incidents', conversations: 'Conversations', health: 'System Health'
@@ -37,10 +39,6 @@ function SparkMark() {
 
 function StatusDot({ active = false }) {
   return <span className={`status-dot ${active ? 'live' : ''}`} aria-hidden="true" />;
-}
-
-function RiskBadge({ band }) {
-  return <span className={`risk-badge risk-${band || 'unknown'}`}>{band || 'unknown'} risk</span>;
 }
 
 function App() {
@@ -129,10 +127,6 @@ function App() {
     return <div className="workspace-content"><div className="page-heading"><div><h2>Repositories</h2><p>Read-only engineering context across the Nexa and Forge ecosystem.</p></div><button className="refresh-button" onClick={() => askFromSurface('repositories')}>✦ Ask Nexa</button></div><div className="repo-grid">{overview?.repositories?.map((repo) => <article className="repo-card" key={repo.id}><div className="repo-card-head"><div><span className="repo-role">{repo.role}</span><h3>{repo.name}</h3></div><span className={`repo-status ${repo.status}`}>{repo.status}</span></div><code>{repo.repo}</code><div className="repo-meta"><span>Branch <b>{repo.defaultBranch || '—'}</b></span><span>Language <b>{repo.language || 'Mixed'}</b></span><span>Issues <b>{repo.openIssues ?? '—'}</b></span></div>{repo.latestCommit && <div className="commit-box"><span>{repo.latestCommit.sha}</span><strong>{repo.latestCommit.message}</strong><small>{repo.latestCommit.committedAt ? new Date(repo.latestCommit.committedAt).toLocaleString() : ''}</small></div>}</article>)}</div></div>;
   }
 
-  function PRRiskView() {
-    return <div className="workspace-content"><div className="page-heading"><div><h2>PR Risk</h2><p>Deterministic size, churn, and CI evidence. Semantic review remains ForgePR territory.</p></div><div className="heading-actions"><button className="refresh-button" onClick={load}>Refresh</button><button className="refresh-button" onClick={() => askFromSurface('pr-risk')}>✦ Ask Nexa</button></div></div><div className="boundary-note"><strong>Authority boundary</strong><span>{prOverview?.boundary?.facts}</span><span>{prOverview?.boundary?.specialist}</span></div>{!prOverview?.items?.length ? <div className="future-panel"><h3>No open pull requests found.</h3><p>Create or open a PR and refresh this workspace.</p></div> : <div className="pr-list">{prOverview.items.map((pr) => <article className="pr-card" key={pr.number}><div className="pr-head"><div><span className="repo-role">PR #{pr.number} · {pr.draft ? 'draft' : 'open'}</span><h3>{pr.title}</h3><p>{pr.head} → {pr.base}</p></div><RiskBadge band={pr.deterministicRisk?.band} /></div><div className="pr-metrics"><span>Files <b>{pr.changedFiles}</b></span><span>Additions <b>+{pr.additions}</b></span><span>Deletions <b>-{pr.deletions}</b></span><span>Commits <b>{pr.commits}</b></span><span>CI <b>{pr.combinedStatus}</b></span></div><div className="fact-list"><strong>Deterministic facts</strong>{pr.deterministicRisk?.facts?.map((fact) => <div className={`fact-row fact-${fact.severity}`} key={fact.code}><span>{fact.code}</span><p>{fact.detail}</p></div>)}</div><a className="pr-link" href={pr.url} target="_blank" rel="noreferrer">Open on GitHub ↗</a></article>)}</div>}</div>;
-  }
-
   function HealthView() {
     const rows = [
       ['Application', health?.status === 'ok', health?.status], ['MongoDB', health?.database === 'mongodb-connected', health?.database], ['AI provider', health?.assistant === 'openai', health?.assistant], ['Engineering overview', Boolean(overview), overview?.mode], ['PR facts', Boolean(prOverview), prOverview ? `${prOverview.count} open PR(s)` : 'loading'], ['Deployment evidence', Boolean(deploymentOverview), deploymentOverview ? `${deploymentOverview.count} recent records` : 'loading']
@@ -147,7 +141,7 @@ function App() {
   let content;
   if (view === 'overview') content = <PremiumOverview overview={overview} prOverview={prOverview} deploymentOverview={deploymentOverview} health={health} onAsk={askFromSurface} setView={setView} onRefresh={load} />;
   else if (view === 'repositories') content = <RepositoriesView />;
-  else if (view === 'pr-risk') content = <PRRiskView />;
+  else if (view === 'pr-risk') content = <PremiumPRRisk data={prOverview} onRefresh={load} onAsk={askFromSurface} />;
   else if (view === 'deployments') content = <div className="context-capable-view"><button className="floating-ask" onClick={() => askFromSurface('deployments')}>✦ Ask Nexa about deployments</button><DeploymentView data={deploymentOverview} onRefresh={load} /></div>;
   else if (view === 'incidents') content = <div className="context-capable-view"><button className="floating-ask" onClick={() => askFromSurface('incidents')}>✦ Ask Nexa about incidents</button><IncidentView /></div>;
   else if (view === 'conversations') content = <ConversationsView />;
