@@ -37,9 +37,16 @@ function getEnvironmentLabel() {
   return productionHosts.has(host) ? 'Production' : 'Preview';
 }
 
+function requestedWorkspace(labels) {
+  const queryView = new URLSearchParams(window.location.search).get('view');
+  const hashView = decodeURIComponent(window.location.hash.slice(1));
+  const requested = queryView || hashView;
+  return requested && labels[requested] ? requested : null;
+}
+
 export default function PremiumShell({ view, setView, labels, health, children, onAsk }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const pendingHashView = useRef(null);
+  const pendingLocationView = useRef(null);
   const environment = getEnvironmentLabel();
 
   useEffect(() => {
@@ -55,30 +62,43 @@ export default function PremiumShell({ view, setView, labels, health, children, 
   }, []);
 
   useEffect(() => {
-    const syncFromHash = () => {
-      const requested = decodeURIComponent(window.location.hash.slice(1));
-      if (requested && labels[requested] && requested !== view) {
-        pendingHashView.current = requested;
+    const syncFromLocation = () => {
+      const requested = requestedWorkspace(labels);
+      if (requested && requested !== view) {
+        pendingLocationView.current = requested;
         setView(requested);
       }
     };
-    syncFromHash();
-    window.addEventListener('hashchange', syncFromHash);
-    return () => window.removeEventListener('hashchange', syncFromHash);
+    syncFromLocation();
+    window.addEventListener('hashchange', syncFromLocation);
+    window.addEventListener('popstate', syncFromLocation);
+    return () => {
+      window.removeEventListener('hashchange', syncFromLocation);
+      window.removeEventListener('popstate', syncFromLocation);
+    };
   }, [labels, setView, view]);
 
   useEffect(() => {
-    if (pendingHashView.current) {
-      if (view !== pendingHashView.current) return;
-      pendingHashView.current = null;
+    if (pendingLocationView.current) {
+      if (view !== pendingLocationView.current) return;
+      pendingLocationView.current = null;
     }
-    const nextHash = `#${view}`;
-    if (window.location.hash !== nextHash) window.history.replaceState(null, '', nextHash);
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view);
+    url.hash = view;
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
+      window.history.replaceState(null, '', next);
+    }
   }, [view]);
 
   const nav = Object.entries(labels);
   const goTo = (id) => {
-    pendingHashView.current = null;
+    pendingLocationView.current = null;
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', id);
+    url.hash = id;
+    window.history.pushState(null, '', `${url.pathname}${url.search}${url.hash}`);
     setView(id);
     setPaletteOpen(false);
   };
