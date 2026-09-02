@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './premium-conversations.css';
 import './premium-utility.css';
 
@@ -39,6 +39,7 @@ function getEnvironmentLabel() {
 
 export default function PremiumShell({ view, setView, labels, health, children, onAsk }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const pendingHashView = useRef(null);
   const environment = getEnvironmentLabel();
 
   useEffect(() => {
@@ -56,20 +57,28 @@ export default function PremiumShell({ view, setView, labels, health, children, 
   useEffect(() => {
     const syncFromHash = () => {
       const requested = decodeURIComponent(window.location.hash.slice(1));
-      if (requested && labels[requested]) setView(requested);
+      if (requested && labels[requested] && requested !== view) {
+        pendingHashView.current = requested;
+        setView(requested);
+      }
     };
     syncFromHash();
     window.addEventListener('hashchange', syncFromHash);
     return () => window.removeEventListener('hashchange', syncFromHash);
-  }, [labels, setView]);
+  }, [labels, setView, view]);
 
   useEffect(() => {
+    if (pendingHashView.current) {
+      if (view !== pendingHashView.current) return;
+      pendingHashView.current = null;
+    }
     const nextHash = `#${view}`;
     if (window.location.hash !== nextHash) window.history.replaceState(null, '', nextHash);
   }, [view]);
 
   const nav = Object.entries(labels);
   const goTo = (id) => {
+    pendingHashView.current = null;
     setView(id);
     setPaletteOpen(false);
   };
