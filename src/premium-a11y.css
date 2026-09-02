@@ -1,0 +1,68 @@
+.premium-shell :focus-visible{
+  outline:2px solid var(--nx-accent-2);
+  outline-offset:3px;
+}
+
+.nexa-wordmark span{
+  color:var(--nx-accent);
+  display:inline;
+  border:0;
+  padding:0;
+  font:inherit;
+}
+
+.premium-rail nav button svg,
+.rail-help svg{
+  display:block;
+  width:19px;
+  height:19px;
+}
+
+.palette-section button>b{
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+}
+
+.palette-section button>b svg{
+  width:17px;
+  height:17px;
+}
+
+.command-trigger[aria-expanded="true"]{
+  border-color:#47765a;
+  background:#14231b;
+  color:#e7efe9;
+}
+
+.topbar-state b{
+  text-transform:uppercase;
+  letter-spacing:.09em;
+  font-size:9px;
+}
+
+.premium-rail nav button[aria-current="page"]:before{
+  content:"";
+  position:absolute;
+  left:-10px;
+  width:2px;
+  height:22px;
+  border-radius:999px;
+  background:var(--nx-accent);
+}
+
+@media(max-width:760px){
+  .premium-rail nav button[aria-current="page"]:before{
+    left:50%;
+    top:-7px;
+    width:20px;
+    height:2px;
+    transform:translateX(-50%);
+  }
+
+  .command-palette{
+    max-height:76vh;
+    overflow:auto;
+  }
+}
